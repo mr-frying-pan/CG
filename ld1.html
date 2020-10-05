@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <title>LD1</title>
+    <script src="ld1.js" type="application/javascript"></script>
+  </head>
+  <body>
+    <main>
+      <div>
+	<label for="depthSlider">Depth: <span id="depthValue">6</span></label>
+	<br/>
+	<input id="depthSlider" type="range" min="0" max="10" value="6"/>
+	<br/>
+	<label for="thicknessSlider">Thickness: <span id="thicknessValue">100</span></label>
+	<br/>
+	<input id="thicknessSlider" type="range" min="1" max="500" value="100"/>
+	<br/>
+	<label for="canvasSize">Canvas size: <span id="canvasSizeValue">600</span></label>
+	<br/>
+	<input id="canvasSize" type="range" min="10" max="1500" value="500"/>
+	<br/>
+	<button id="btn-reset" type="button">Reset</button>
+      </div>
+      <canvas id="canvas">Oh no! :(</canvas>
+    </main>
+  </body>
+</html>
