@@ -8,19 +8,20 @@
    0     0.5  0
    0     0    1
 
-    Viršutinis dešinys kvadratas:
-    -0.25  0      cw
-    0      -0.25  0.25*ch
-    0      0      1
+   Viršutinis dešinys kvadratas:
+   -0.25  0      cw
+   0      -0.25  0.25*ch
+   0      0      1
 
-    Apatinis kairys kvadratas:
-    0.5  0    0
-    0    0.5  0.5*ch
-    0    0    1
+   Apatinis kairys kvadratas:
+   0.5  0    0
+   0    0.5  0.5*ch
+   0    0    1
 
-    Apatinis dešinys kvadratas:
-    0     -0.5  cw
-    -0.5  0     ch
+   Apatinis dešinys kvadratas:
+   0     -0.5  cw
+   -0.5  0     ch
+   0     0     1
 */
 
 var canvas, ctx;
