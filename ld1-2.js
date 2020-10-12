@@ -12,8 +12,11 @@ function drawShape(ctx, cw, ch) {
     ctx.moveTo(0, 0);
     ctx.lineTo(0, ch);
     ctx.lineTo(cw, ch);
-    ctx.lineWidth = thickness;
-    ctx.stroke();
+    ctx.lineTo(cw, ch - 2 * thickness);
+    ctx.lineTo(thickness, ch - 2 * thickness);
+    ctx.lineTo(thickness, 0);
+    ctx.closePath();
+    ctx.fill();
 }
 
 function clear(ctx, w, h) {
@@ -121,13 +124,13 @@ window.onload = () => {
     c4 = document.getElementById('c4');
 
     ctx1 = c1.getContext('2d');
-    ctx1.strokeStyle = 'blue';
+    ctx1.fillStyle = 'blue';
     ctx2 = c2.getContext('2d');
-    ctx2.strokeStyle = 'magenta';
+    ctx2.fillStyle = 'magenta';
     ctx3 = c3.getContext('2d');
-    ctx3.strokeStyle = 'red';
+    ctx3.fillStyle = 'red';
     ctx4 = c4.getContext('2d');
-    ctx4.strokeStyle = 'green';
+    ctx4.fillStyle = 'green';
 
     // buttons
     const btn1 = document.getElementById('btn-t1');

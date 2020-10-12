@@ -27,16 +27,19 @@
 var canvas, ctx;
 
 var depth = 6;
-var thickness = 100;
+var thickness = 50;
 
 function drawActual(color = 'black') {
     ctx.beginPath();
-    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
     ctx.moveTo(0, 0);
     ctx.lineTo(0, canvas.height);
     ctx.lineTo(canvas.width, canvas.height);
-    ctx.lineWidth = thickness;
-    ctx.stroke();
+    ctx.lineTo(canvas.width, canvas.height - 2 * thickness);
+    ctx.lineTo(thickness, canvas.height - 2 * thickness);
+    ctx.lineTo(thickness, 0);
+    ctx.lineTo(0, 0);
+    ctx.fill();
 }
 
 function drawDeep(depth, color) {
@@ -129,7 +132,7 @@ window.onload = () => {
 	console.log('reset');
 	changeCanvasSize(canvasSizeSlider.value = 500);
 	changeDepth(depthSlider.value = 6);
-	changeThickness(thicknessSlider.value = 100);
+	changeThickness(thicknessSlider.value = 50);
 	resetImage();
     };
 
