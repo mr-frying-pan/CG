@@ -35,11 +35,13 @@ function drawActual(color = 'black') {
     ctx.moveTo(0, 0);
     ctx.lineTo(0, canvas.height);
     ctx.lineTo(canvas.width, canvas.height);
-    ctx.lineTo(canvas.width, canvas.height - 2 * thickness);
-    ctx.lineTo(thickness, canvas.height - 2 * thickness);
+    ctx.lineTo(canvas.width, canvas.height - thickness);
+    ctx.lineTo(thickness, canvas.height - thickness);
     ctx.lineTo(thickness, 0);
-    ctx.lineTo(0, 0);
+    ctx.closePath();
     ctx.fill();
+    ctx.font = thickness + "pt Arial";
+    ctx.fillText("Nesimetriška", 1.1 * thickness, canvas.height - thickness, canvas.width - 1.1 * thickness);
 }
 
 function drawDeep(depth, color) {
@@ -58,10 +60,11 @@ function drawDeep(depth, color) {
 
     // bottom right
     ctx.save();
-    // translate(canvas.width, canvas.height);
-    // rotate(0.5 * Math.PI);
-    // scale(-0.5, 0.5);
+    // ctx.translate(canvas.width, canvas.height);
+    // ctx.rotate(0.5 * Math.PI);
+    // ctx.scale(-0.5, 0.5);
     ctx.transform(0, -0.5, -0.5, 0, canvas.width, canvas.height);
+    console.log(0, -0.5, -0.5, 0, canvas.width, canvas.height);
     drawDeep(depth - 1, color || 'green');
     ctx.restore();
 

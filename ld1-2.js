@@ -1,7 +1,7 @@
 var c1, c2, c3, c4;
 var ctx1, ctx2, ctx3, ctx4;
 var time1 = 1000, time2 = 1000, time3 = 1000, time4 = 1000;
-var thickness = 10;
+var thickness = 30;
 
 let start1, start2, start3, start4;
 let t4 = false;
@@ -12,30 +12,36 @@ function drawShape(ctx, cw, ch) {
     ctx.moveTo(0, 0);
     ctx.lineTo(0, ch);
     ctx.lineTo(cw, ch);
-    ctx.lineTo(cw, ch - 2 * thickness);
-    ctx.lineTo(thickness, ch - 2 * thickness);
+    ctx.lineTo(cw, ch - thickness);
+    ctx.lineTo(thickness, ch - thickness);
     ctx.lineTo(thickness, 0);
     ctx.closePath();
     ctx.fill();
+    ctx.font = thickness + "pt Arial";
+    ctx.fillText("Nesimetriška", 1.1 * thickness, ch - thickness, cw - 1.1 * thickness);
 }
 
 function clear(ctx, w, h) {
     ctx.clearRect(0, 0, w, h);
 }
 
-function drawTFrame(ctx, w, h, e1, e2, o, t) {
+function drawTFrame(ctx, w, h, translation, rotation, scale, t) {
     const transformMatrix = [
 	// i
-	(1 - t) * 1 + t * e1[0], (1 - t) * 0 + t * e1[1],
+	(1 - t) + Math.cos(t * rotation) * scale.i * t,
+	-Math.sin(t * rotation) * scale.j * t,
 	// j
-	(1 - t) * 0 + t * e2[0], (1 - t) * 1 + t * e2[1],
+	Math.sin(t * rotation) * scale.i * t,
+	(1 - t) + Math.cos(t * rotation) * scale.j * t,
 	// origin
-	(1 - t) * 0 + t * o[0],
-	(1 - t) * 0 + t * o[1]	
+	t * translation.x,
+	t * translation.y	
     ];
     clear(ctx, w, h);
     ctx.save();
-    ctx.transform(...transformMatrix);
+    ctx.translate(t * translation.x, t * translation.y);
+    ctx.rotate(t * rotation);
+    ctx.scale((1 - t) + t * scale.i, (1 - t) + t * scale.j);
     drawShape(ctx, w, h);
     ctx.restore();
 }
@@ -45,13 +51,10 @@ function drawT1Frame(timestamp) {
 	start1 = timestamp;
     const elapsed = timestamp - start1;
     const t = Math.min(elapsed, time1) / time1;
-    /**
-       -0.5  0    0.5*cw
-       0     0.5  0
-       0     0    1
-     */
     drawTFrame(ctx1, c1.width, c1.height,
-	       [-0.5, 0], [0, 0.5], [0.5 * c1.width, 0],
+	       { x: 0.5 * c1.width, y: 0 }, // translation
+	       0, // rotation
+	       { i: -0.5, j: 0.5 }, // scale
 	       t);
     return t !== 1;
 }
@@ -61,13 +64,13 @@ function drawT2Frame(timestamp) {
 	start2 = timestamp;
     const elapsed = timestamp - start2;
     const t = Math.min(elapsed, time2) / time2;
-    /**
-       -0.25  0      cw
-       0      -0.25  0.25*ch
-       0      0      1
-    */
+    const translation = { x: c2.width, y: 0.25 * c2.height };
+    const rotation = Math.PI;
+    const scale = { i: 0.25, j: 0.25 };
     drawTFrame(ctx2, c2.width, c2.height,
-	       [-0.25, 0], [0, -0.25], [c2.width, 0.25 * c2.height],
+	       translation,
+	       rotation,
+	       scale,
 	       t);
     return t !== 1;
 }
@@ -77,13 +80,10 @@ function drawT3Frame(timestamp) {
 	start3 = timestamp;
     const elapsed = timestamp - start3;
     const t = Math.min(elapsed, time3) / time3;
-    /**
-       0.5  0    0
-       0    0.5  0.5*ch
-       0    0    1
-    */
     drawTFrame(ctx3, c3.width, c3.height,
-	       [0.5, 0], [0, 0.5], [0, 0.5 * c3.height],
+	       { x: 0, y: 0.5 * c3.height }, // translation
+	       0, // rotation
+	       { i: 0.5, j: 0.5 }, // scale
 	       t);
     return t !== 1;
 }
@@ -93,13 +93,13 @@ function drawT4Frame(timestamp) {
 	start4 = timestamp;
     const elapsed = timestamp - start4;
     const t = Math.min(elapsed, time4) / time4;
-    /**
-       0     -0.5  cw
-       -0.5  0     ch
-       0     0     1
-    */
+    const translation = { x: c4.width, y: c4.height };
+    const rotation = 0.5 * Math.PI;
+    const scale = { i: -0.5, j: 0.5 };
     drawTFrame(ctx4, c4.width, c4.height,
-	       [0, -0.5], [-0.5, 0], [c4.width, c4.height],
+	       translation,
+	       rotation, 
+	       scale,
 	       t);
     return t !== 1;
 }
