@@ -1,0 +1,290 @@
+<html><head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>Stairway to Heaven</title>
+    <script type="text/javascript" src="lib/three.js"></script>
+    <script type="text/javascript" src="lib/jquery-1.js"></script>
+    <script type="text/javascript" src="lib/TrackballControls.js"></script>
+    <script type="text/javascript" src="lib/stats.js"></script>
+    <script type="text/javascript" src="lib/dat.js"></script>
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+
+    <div id="WebGL-output"></div>
+
+    <script type="text/javascript">
+      function copyVector(v) {
+	  return new THREE.Vector3(v.x, v.y, v.z);
+      }
+
+      const axes = {
+	  x: new THREE.Vector3(1, 0, 0),
+	  y: new THREE.Vector3(0, 1, 0),
+	  z: new THREE.Vector3(0, 0, 1)
+      };
+      const metalMaterial = new THREE.MeshPhongMaterial({color: 0xaca19f, shininess: 10, specular: 0x444444, reflectivity: 1});
+      const woodMaterial = new THREE.MeshLambertMaterial({color: 0xeaac71});
+
+      function createSupportCylinder(r, h) {
+	  const geometry = new THREE.CylinderBufferGeometry(r, r, h, 20);
+	  const mesh = new THREE.Mesh(geometry, metalMaterial);
+	  mesh.castShadow = true;
+	  return mesh;
+      }
+
+      function createSupportBar(w, l) {
+	  const geometry = new THREE.BoxBufferGeometry(w / 2, w, l);
+	  const mesh = new THREE.Mesh(geometry, metalMaterial);
+	  mesh.castShadow = true;
+	  return mesh;
+      }
+
+      function createStepSurface(width, thickness, depth, height, left) {
+	  const shape = new THREE.Shape();
+	  shape.moveTo(0, 0);
+	  shape.lineTo(width, 0);
+	  shape.lineTo(width, depth);
+	  shape.quadraticCurveTo(width * 0.6, depth, 0, depth / 2);
+	  const extrudeOptions = {
+	      depth: thickness,
+	      bevelThickness: thickness / 5,
+	      bevelSize: thickness / 5,
+	      bevelSegments: 5,
+	      bevelEnabled: true,
+	      curveSegments: 10,
+	      steps: 50,
+	  };
+	  const mesh = new THREE.Mesh(new THREE.ExtrudeBufferGeometry(shape, extrudeOptions), woodMaterial);
+	  mesh.castShadow = true;
+	  mesh.receiveShadow = true;
+	  return mesh;
+      }
+
+      function makeStep(props) {
+	  const barThickness = props.step.thickness * 2;
+	  const step = new THREE.Group();
+	  const cylinder = createSupportCylinder(props.step.depth / 6, props.step.height + barThickness);
+	  cylinder.position.set(
+	      0,
+	      props.step.height / 2 + barThickness / 2 - barThickness,
+	      0 //0.6 * depth
+	  );
+	  step.add(cylinder);
+
+	  const bar = createSupportBar(barThickness, 0.6 * props.step.depth);
+	  bar.position.set(
+	      0,
+	      props.step.height - barThickness / 2,
+	      -0.4 * props.step.depth
+	  );
+	  step.add(bar);
+
+	  const stepSurface = createStepSurface(props.step.width, props.step.thickness, props.step.depth, props.step.height, props.left);
+	  stepSurface.rotation.x = !props.left ? Math.PI / 2 : -Math.PI / 2;
+	  stepSurface.rotation.z = props.left * Math.PI;
+	  stepSurface.position.x = props.left ? props.step.width / 2 : -props.step.width / 2;
+	  stepSurface.position.y = props.step.height + !props.left * props.step.thickness;
+	  stepSurface.position.z = -0.6 * props.step.depth
+	  step.add(stepSurface);
+
+	  if(props.rail) {
+	      const railing = makeRailing(props.railing.length, props.railing.tubeRadius, props.railing.hookRadius);
+	      railing.position.x = props.step.width / 2 - props.railing.hookRadius;
+	      railing.position.y = props.step.height;
+	      step.add(railing);
+	  }
+	  return step;
+      }
+
+      function makeRailing(length, tubeRadius, hookRadius) {
+	  const curve = new THREE.CatmullRomCurve3([
+	      new THREE.Vector3(0, tubeRadius, 0),
+	      new THREE.Vector3(0, 0, 0),
+	      new THREE.Vector3(hookRadius, -hookRadius, 0),
+	      new THREE.Vector3(2 * hookRadius, 0, 0),
+	      new THREE.Vector3(2 * hookRadius, length, 0),
+	  ]);
+	  const geom = new THREE.TubeBufferGeometry(curve, 30, tubeRadius);
+	  const mesh = new THREE.Mesh(geom, metalMaterial);
+	  mesh.castShadow = true;
+	  return mesh;
+      }
+
+      function makeRail(points, radius) {
+	  const rail = new THREE.Group();
+	  const firstPtGeom = new THREE.SphereBufferGeometry(radius);
+	  const firstPtMesh = new THREE.Mesh(firstPtGeom, metalMaterial)
+	  firstPtMesh.position.set(points[0].x, points[0].y, points[0].z);
+	  rail.add(firstPtMesh);
+	  for(let i = 1; i < points.length; i++) {
+	      const ptGeom = new THREE.SphereBufferGeometry(radius);
+	      const ptMesh = new THREE.Mesh(ptGeom, metalMaterial)
+	      ptMesh.position.set(points[i].x, points[i].y, points[i].z);
+	      rail.add(ptMesh);
+	      const curve = new THREE.LineCurve3(points[i-1], points[i]);
+	      const geom = new THREE.TubeBufferGeometry(curve, 20, radius);
+	      const mesh = new THREE.Mesh(geom, metalMaterial);
+	      mesh.castShadow = true;
+	      rail.add(mesh);
+	  }
+	  return rail;
+      }
+
+      function makeBase(radius, height) {
+	  const geom = new THREE.CylinderBufferGeometry(radius, radius, height, 15, 1);
+	  const mesh = new THREE.Mesh(geom, metalMaterial);
+	  mesh.receiveShadows = true;
+	  return mesh;
+      }
+
+      function makeStairs(props) {
+	  const fdist = 0.6 * props.step.depth + props.step.depth / 6;
+
+	  const stairs = new THREE.Group();
+
+	  const base = makeBase(props.step.depth / 3);
+	  base.position.x = props.rotationRadius;
+	  stairs.add(base);
+
+	  let step = makeStep({ step: props.step, railing: props.railing, left: false, rail: true});
+	  step.position.x = props.rotationRadius;
+
+	  let posV = new THREE.Vector3(props.rotationRadius, 0, 0);
+	  let stepV = copyVector(axes.y).cross(posV).setLength(fdist);
+	  const stepAngle = posV.angleTo(copyVector(posV).add(stepV));
+	  stepV.y = props.step.height;
+	  stairs.position.set(props.x, props.y, props.z);
+	  stairs.add(step);
+
+	  let railDeltaV = new THREE.Vector3(props.step.width / 2 + props.railing.hookRadius,
+					     props.step.height + props.railing.length,
+					     0);
+	  let railV = copyVector(posV).add(railDeltaV);
+	  const railPts = [railV];
+	  for(var i = 1; i < props.step.count ; i++) {
+	      step = makeStep({ step: props.step, railing: props.railing, left: i & 1, rail: !(i & 1) });
+	      posV.add(stepV);
+	      step.position.x = posV.x;
+	      step.position.y = posV.y;
+	      step.position.z = posV.z;
+	      if(!props.straight) {
+		  stepV.applyAxisAngle(axes.y, stepAngle);
+		  step.rotation.y = i * stepAngle;
+	      }
+	      stairs.add(step);
+	      if(!(i & 1)) {
+		  if(!props.straight)
+		      railDeltaV.applyAxisAngle(axes.y, 2 * stepAngle);
+		  railPts.push(copyVector(posV).add(railDeltaV));
+	      }
+	  }
+	  const rail = makeRail(railPts, props.railing.tubeRadius);
+	  stairs.add(rail);
+
+	  const planeGeom = new THREE.BoxBufferGeometry(50, 0.1, 50);
+	  const planeMaterial = new THREE.MeshLambertMaterial({color: 0xfe9b38 });
+	  const planeMesh = new THREE.Mesh(planeGeom, planeMaterial);
+	  planeMesh.position.z = -23;
+	  planeMesh.castShadow = true;
+	  const plane = new THREE.Object3D();
+	  plane.add(planeMesh);
+	  
+	  posV.add(stepV);
+	  plane.position.add(posV);
+	  if (!props.straight)
+	      plane.rotation.y = (i-1) * stepAngle;
+	  else
+	      plane.position.z = props.step.count * -(0.77 * props.step.depth);
+	  plane.castShadow = true;
+
+	  stairs.add(plane);
+	  return stairs;
+      }
+
+      $(function () {
+	  const options = {
+	      rotationRadius: 15,
+	      stepWidth: 30,
+	      stepDepth: 10,
+	      stepThickness: 1,
+	      stepHeight: 10,
+	      stepCount: 30,
+	      railingLength: 40,
+	      railingTubeRadius: 0.5,
+	      railingHookRadius: 2,
+	      straight: false,
+	  }
+	  const scene = new THREE.Scene();
+	  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 5000);
+	  const renderer = new THREE.WebGLRenderer();
+	  renderer.setClearColor(0xEEEEEE, 1.0);
+	  renderer.setSize(window.innerWidth, window.innerHeight);
+	  renderer.shadowMap.enabled = true;
+
+	  // const axes = new THREE.AxesHelper(200);
+	  // scene.add(axes);
+
+	  let stairs;
+	  redraw();
+
+	  const floorGeom = new THREE.PlaneBufferGeometry(1000, 1000);
+	  const floorMaterial = new THREE.MeshLambertMaterial({color: 0x8250eb});
+	  const floorMesh = new THREE.Mesh(floorGeom, floorMaterial);
+	  floorMesh.rotation.x = -Math.PI / 2;
+	  floorMesh.receiveShadow = true;
+	  scene.add(floorMesh);
+
+	  camera.position.x = -150;
+	  camera.position.y = 600;
+	  camera.position.z = 120;
+	  camera.lookAt(copyVector(scene.position).add(new THREE.Vector3(100, 0, -100)));
+
+	  const spotLight1 = new THREE.SpotLight(0xDDDDDD);
+	  spotLight1.position.set(100, 400, 50);
+	  spotLight1.castShadow = true;
+	  scene.add(spotLight1);
+
+	  const ambientLight = new THREE.AmbientLight(0x505050, 1.5);
+	  scene.add(ambientLight);
+
+	  function redraw() {
+	      options.stepCount = Math.floor(options.stepCount);
+	      if(stairs) scene.remove(stairs);
+	      stairs = makeStairs({ x: 0,
+				    y: 0,
+				    z: 0,
+				    rotationRadius: options.rotationRadius,
+				    step: {
+					width: options.stepWidth,
+					depth: options.stepDepth,
+					thickness: options.stepThickness,
+					height: options.stepHeight,
+					count: options.stepCount,
+				    },
+				    railing: {
+					length: options.railingLength,
+					tubeRadius: options.railingTubeRadius,
+					hookRadius: options.railingHookRadius,
+				    },
+				    straight: options.straight,
+				  });
+	      scene.add(stairs);
+	  }
+
+	  const gui = new dat.GUI();
+	  gui.add(options, 'rotationRadius', 5, 100, 1).onChange(redraw);
+	  gui.add(options, 'stepCount', 1, 30, 1).onChange(redraw);
+	  gui.add(options, 'straight').onChange(redraw);
+
+	  $("#WebGL-output").append(renderer.domElement);
+	  const controls = new THREE.TrackballControls(camera, renderer.domElement);
+	  render();
+
+	  function render() {
+	      renderer.render(scene, camera);
+	      requestAnimationFrame(render);
+	      controls.update();
+	  }
+      });
+    </script>
+  </body>
+</html>

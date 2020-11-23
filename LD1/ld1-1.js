@@ -54,7 +54,8 @@ function drawDeep(depth, color) {
     ctx.save();
     // translate(0, 0.5 * canvas.height);
     // scale(0.5, 0.5);
-    ctx.transform(0.5, 0, 0, 0.5, 0, 0.5 * canvas.height);
+    // ctx.transform(0.5, 0, 0, 0.5, 0, 0.5 * canvas.height);
+    ctx.transform(0.5, 0, 0, 0.5, 0, canvas.height / 2);
     drawDeep(depth - 1, color || 'red');
     ctx.restore();
 
@@ -63,8 +64,8 @@ function drawDeep(depth, color) {
     // ctx.translate(canvas.width, canvas.height);
     // ctx.rotate(0.5 * Math.PI);
     // ctx.scale(-0.5, 0.5);
-    ctx.transform(0, -0.5, -0.5, 0, canvas.width, canvas.height);
-    console.log(0, -0.5, -0.5, 0, canvas.width, canvas.height);
+    // ctx.transform(0, -0.5, -0.5, 0, canvas.width, canvas.height);
+    ctx.transform(0, 0.5, 0.5, 0, canvas.width / 2, canvas.height / 2);
     drawDeep(depth - 1, color || 'green');
     ctx.restore();
 
@@ -72,7 +73,8 @@ function drawDeep(depth, color) {
     ctx.save();
     // translate(0.5 * canvas.width, 0);
     // scale(-0.5, 0.5);
-    ctx.transform(-0.5, 0, 0, 0.5, 0.5 * canvas.width, 0);
+    // ctx.transform(-0.5, 0, 0, 0.5, 0.5 * canvas.width, 0);
+    ctx.transform(0, -0.25, 0.25, 0, 0, canvas.height / 2);
     drawDeep(depth - 1, color || 'blue');
     ctx.restore();
 
@@ -81,7 +83,8 @@ function drawDeep(depth, color) {
     // translate(canvas.width, 0.25 * canvas.height);
     // rotate(Math.PI);
     // scale(0.25, 0.25);
-    ctx.transform(-0.25, 0, 0, -0.25, canvas.width, 0.25 * canvas.height);
+    // ctx.transform(-0.25, 0, 0, -0.25, canvas.width, 0.25 * canvas.height);
+    ctx.transform(0.5, 0, 0, 0.5, canvas.width / 2, 0);
     drawDeep(depth - 1, color || 'magenta');
     ctx.restore();
 }

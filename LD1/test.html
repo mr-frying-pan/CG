@@ -1,0 +1,24 @@
+<html><body>
+    <canvas id="myCanvas" width="400" height="400"
+	    style="border:1px solid #000000;"></canvas>
+    <script>
+      var canvas = document.getElementById("myCanvas");
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = 'red';
+      ctx.beginPath();
+      ctx.moveTo(0, 200);
+      ctx.arc(200, 200, 200, Math.PI, 3 * Math.PI / 2, true);
+      ctx.fill();
+      ctx.moveTo(400, 200);
+      ctx.arc(200, 200, 200, Math.PI / 2, 0, false);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
+      ctx.beginPath();
+      ctx.rect(100, 100, 200, 200);
+      ctx.closePath();
+      ctx.fill();
+    </script> 
+</body></html>
+
+
