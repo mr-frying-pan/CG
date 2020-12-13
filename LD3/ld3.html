@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>LD3</title>
+    <script type="application/javascript" src="lib/three.js"></script>
+    <script type="application/javascript" src="lib/jquery-1.js"></script>
+    <script type="application/javascript" src="lib/ConvexGeometry.js"></script>
+    <script type="application/javascript" src="lib/TrackballControls.js"></script>
+    <script type="application/javascript" src="lib/dat.js"></script>
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <div id="WebGL-output"></div>
+
+    <script type="application/javascript">
+      const r = 20;
+      const R = 60;
+
+      function u(p) {
+	  return (Math.atan2(p.x, p.z) + Math.PI) / (2 * Math.PI);
+      }
+
+      function v(p) {
+	  return Math.asin(p.y / r) / Math.PI + 0.5;
+      }
+      
+      function mapUVs(geom) {
+	  for(let i = 0; i < geom.faces.length; i++) {
+	      // face has a, b and c vertices
+	      const a = geom.vertices[geom.faces[i].a];
+	      const b = geom.vertices[geom.faces[i].b];
+	      const c = geom.vertices[geom.faces[i].c];
+	      let au = u(a), av = v(a);
+	      let bu = u(b), bv = v(b);
+	      let cu = u(c), cv = v(c);
+	      const diffs = {
+		  aubu: Math.abs(au - bu),
+		  bucu: Math.abs(bu - cu),
+		  aucu: Math.abs(au - cu)
+	      }
+	      if(diffs.aubu < diffs.bucu && diffs.aubu < diffs.aucu && diffs.bucu > 0.5) {
+		  if(bu < cu) cu -= 1;
+		  else cu += 1;
+	      }
+	      else if(diffs.bucu < diffs.aucu && diffs.bucu < diffs.aubu && diffs.aucu > 0.5) {
+		  if(au < cu) au += 1;
+		  else au -= 1;
+	      }
+	      else if(diffs.aucu < diffs.bucu && diffs.aucu < diffs.aubu && diffs.aubu > 0.5) {
+		  if(bu < cu) bu += 1;
+		  else bu -= 1;
+	      }
+	      geom.faceVertexUvs[0][i] = [
+		  new THREE.Vector2(au, av),
+		  new THREE.Vector2(bu, bv),
+		  new THREE.Vector2(cu, cv)
+	      ];
+	  }
+      };
+
+      $(function () {
+          var scene = new THREE.Scene();
+          var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+          var webGLRenderer = new THREE.WebGLRenderer();
+          webGLRenderer.setClearColor(new THREE.Color(0xEEEEEE), 1.0);
+          webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+          webGLRenderer.shadowMapEnabled = true;
+
+          camera.position.x = -30;
+          camera.position.y = 40;
+          camera.position.z = 50;
+          camera.lookAt(new THREE.Vector3(10, 0, 0));
+
+          $("#WebGL-output").append(webGLRenderer.domElement);
+
+          let step = 0;
+          let hullMesh;
+
+          generatePoints();
+
+          const guiElems = new function () {
+              this.regenerate = function () {
+                  scene.remove(hullMesh);
+                  generatePoints();
+              };
+          }
+
+          const gui = new dat.GUI();
+          gui.add(guiElems, 'regenerate');
+
+	  const ctrl = new THREE.TrackballControls(camera, webGLRenderer.domElement);
+          render();
+
+          function generatePoints() {
+              const points = [];
+	      while(points.length < 500) {
+		  const x = -(R + r) + Math.round(Math.random() * 2 * (R + r));
+                  const y = -r + Math.round(Math.random() * 2 * r);
+                  const z = -(R + r) + Math.round(Math.random() * 2 * (R + r));
+		  const testVal =
+			(x**2 + y**2 + z**2 + R**2 - r**2)**2
+			- 4 * R**2 * (x**2 + z**2)
+		  let mat;
+		  if(testVal <= 0)
+		      points.push(new THREE.Vector3(x, y, z));
+	      }
+              const hullGeometry = new THREE.ConvexGeometry(points);
+	      mapUVs(hullGeometry);
+              hullMesh = createMesh(hullGeometry);
+              scene.add(hullMesh);
+          }
+
+          function createMesh(geom) {
+	      const texture = THREE.ImageUtils.loadTexture("chk.png");
+	      // NOTE: tiling of images in textures only functions if image dimensions are powers of two (2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, ...) in terms of pixels. Individual dimensions need not be equal, but each must be a power of two. This is a limitation of WebGL, not three.js. 
+	      texture.wrapS = THREE.RepeatWrapping;
+	      texture.wrapT = THREE.RepeatWrapping;
+              const mat = new THREE.MeshBasicMaterial({ map: texture });
+              var mesh = new THREE.Mesh(geom, mat);
+              return mesh;
+          }
+
+          function render() {
+              requestAnimationFrame(render);
+              webGLRenderer.render(scene, camera);
+	      ctrl.update();
+          }
+      });
+    </script>
