@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>LD3</title>
+    <script type="application/javascript" src="lib/three-latest.js"></script>
+    <script type="application/javascript" src="lib/jquery-1.js"></script>
+    <script type="application/javascript" src="lib/TrackballControls.js"></script>
+    <script type="application/javascript" src="lib/dat.gui.js"></script>
+  </head>
+  <body style="margin: 0; overflow: hidden;">
+    <div id="WebGL-output"></div>
+
+    <script type="application/javascript">
+      'use strict;'
+      const boardSize = 200;
+      const boardTexture = new THREE.TextureLoader().load('chk.png');
+
+      let bishopGeom;
+      let bishopHeight;
+      const bishopSpeed = 0.01;
+
+      let cameraMesh;
+      let t = 0;
+
+      let dollyW = 200;
+
+      function toDeg(rad) {
+	  return 180 / Math.PI * rad;
+      }
+
+      function toRad(deg) {
+	  return Math.PI / 180 * deg;
+      }
+
+      function boardLoc(n) {
+	  return n * 0.5 * boardSize / 16;
+      }
+
+      const settings = {
+	  fov: 45,
+	  dolly: boardLoc(-3),
+      };
+
+      function renderViewport(renderer, scene, l, r, w, h, cam) {
+	  renderer.setViewport(l, r, w, h);
+	  renderer.setScissor(l, r, w, h);
+	  renderer.setScissorTest(true);
+	  renderer.render(scene, cam);
+      }
+
+      function renderViewports(renderer, scene, w, h, c0, c1, c2, c2h, c3h) {
+	  renderViewport(renderer, scene, w / 2, 0, w / 2, h, c0);
+	  c2h.visible = false;
+	  c3h.visible = false;
+	  renderViewport(renderer, scene, 0, 0, w / 2, h / 2, c1);
+	  renderViewport(renderer, scene, 0, h / 2, w / 2, h / 2, c2);
+	  c2h.visible = true;
+	  c3h.visible = true;
+      }
+
+      function makeBoard() {
+	  const geom = new THREE.PlaneBufferGeometry(boardSize, boardSize);
+	  const mat = new THREE.MeshLambertMaterial({ map: boardTexture });
+	  const mesh = new THREE.Mesh(geom, mat);
+	  mesh.receiveShadow = true;
+	  mesh.rotation.x = -Math.PI / 2;
+	  return mesh;
+      }
+
+      function makeBishop(color = 0xffffff) {
+	  if(!bishopGeom) {
+	      const zip = (a, b) => a.map((e, i) => [e, b[i]]);
+	      const xs = [ 596, 596, 586, 596, 538, 541, 522, 504, 496, 493, 525, 552, 557, 549, 531,
+			   532, 522, 507, 506, 520, 515, 531, 538, 534, 522, 496, 469, 480, 479, 457 ];
+	      const minX = Math.min(...xs);
+	      const scale = 0.8 * boardSize / 16 / (xs[0] - minX);
+	      xs.unshift(minX);
+	      const ys = [ 702, 667, 655, 637, 576, 552, 539, 485, 437, 375, 370, 360, 351, 344, 337,
+			   329, 320, 317, 289, 282, 267, 242, 214, 187, 157, 119,  81,  71,  54,  45 ];
+	      const minY = Math.min(...ys);
+	      ys.unshift(ys[0]);
+	      const pts = zip(xs.map(e => (e - minX) * scale),
+			      ys.map(e => (e - minY) * scale)
+			     )
+		    .map(e => new THREE.Vector2(e[0], e[1]));
+	      bishopGeom = new THREE.LatheBufferGeometry(pts, 24);
+	      bishopHeight = (ys[0] - minY) * scale;
+	  }
+
+	  const mat = new THREE.MeshPhongMaterial({
+	      color,
+	      specular: 0x404040,
+	      shininess: 100,
+	      side: THREE.BackSide});
+	  bishopMesh = new THREE.Mesh(bishopGeom, mat);
+	  bishopMesh.castShadow = true;
+	  bishopMesh.rotation.z = Math.PI;
+	  bishopMesh.position.y = bishopHeight;
+	  return bishopMesh;
+      }
+
+      function makeCameraModel() {
+	  if(cameraMesh)
+	      return cameraMesh.clone();
+	  const camera = new THREE.Group();
+
+	  const mat = new THREE.MeshLambertMaterial({color:0x888888});
+
+	  const bodyG = new THREE.BoxBufferGeometry(5, 10, 15);
+	  const bodyM = new THREE.Mesh(bodyG, mat);
+	  bodyM.position.y = 2.5;
+	  bodyM.position.z = -10.5;
+	  camera.add(bodyM);
+
+	  const c1G = new THREE.CylinderBufferGeometry(1.75, 1.75, 1.5);
+	  const c1M = new THREE.Mesh(c1G, mat);
+	  c1M.position.z = -2.5;
+	  c1M.rotation.x = Math.PI / 2;
+	  camera.add(c1M);
+
+	  const c2G = new THREE.CylinderBufferGeometry(3, 3, 2);
+	  const c2M = new THREE.Mesh(c2G, mat);
+	  c2M.position.z = -1;
+	  c2M.rotation.x = Math.PI / 2;
+	  camera.add(c2M);
+
+	  const rollG = new THREE.CylinderBufferGeometry(5, 5, 3, 16);
+	  const roll1 = new THREE.Mesh(rollG, mat);
+	  roll1.position.z = -6;
+	  roll1.position.y = 10;
+	  roll1.rotation.z = Math.PI / 2;
+	  camera.add(roll1);
+
+	  const roll2 = new THREE.Mesh(rollG, mat);
+	  roll2.position.z = -15;
+	  roll2.position.y = 10;
+	  roll2.rotation.z = Math.PI / 2;
+	  camera.add(roll2);
+	  return camera;
+      }
+
+      function initScroll(canvas, fovControl, dollyControl) {
+	  canvas.addEventListener('wheel', (e) => {
+	      if(e.clientX >= canvas.width / 2)
+		  fovControl.setValue(fovControl.getValue() + e.deltaY);
+	      else if(e.clientY >= canvas.height / 2)
+		  dollyControl.setValue(dollyControl.getValue() + e.deltaY);
+	  });
+      }
+
+      $(function () {
+          const scene = new THREE.Scene();
+          
+          const webGLRenderer = new THREE.WebGLRenderer();
+          webGLRenderer.setClearColor(new THREE.Color(0xEEEEEE), 1.0);
+          webGLRenderer.setSize(window.innerWidth, window.innerHeight);
+	  webGLRenderer.shadowMap.enabled = true;
+	  $("#WebGL-output").append(webGLRenderer.domElement);
+
+	  // OBJECTS
+	  const board = makeBoard();
+	  scene.add(board);
+
+	  // moving
+	  const bishop1 = makeBishop(0x202020);
+	  bishop1.position.z = boardLoc(10);
+	  scene.add(bishop1);
+
+	  // stationary
+	  const bishop2 = makeBishop(0xffffff);
+	  bishop2.position.x = boardLoc(10);
+	  bishop2.position.z = -boardLoc(8);
+	  scene.add(bishop2);
+	  
+	  // CAMERAS
+	  const aspect = window.innerWidth / window.innerHeight;
+
+	  // debug camera
+	  // const C0 = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+	  // C0.position.set(-250, 200, -150);
+	  // C0.lookAt(new THREE.Vector3(10, 0, 10));
+
+	  // general view
+	  const C1 = new THREE.PerspectiveCamera(45, aspect / 2, 0.1, 1000);
+	  C1.rotation.y = Math.PI;
+	  C1.position.set(-250, 200, -150);
+	  C1.lookAt(new THREE.Vector3(10, 0, 10));
+	  scene.add(C1);
+
+	  // dolly camera, change z
+	  const C2 = new THREE.PerspectiveCamera(45, aspect, 10, 130);
+	  C2.rotation.y = Math.PI;
+	  const C2model = makeCameraModel();
+	  C2model.add(C2);
+	  C2model.position.x = boardLoc(-3);
+	  C2model.position.y = 20;
+	  C2model.position.z = bishop2.position.z;
+	  C2model.lookAt(new THREE.Vector3(boardLoc(10), 20, boardLoc(-8)));
+	  scene.add(C2model);
+	  const C2Helper = new THREE.CameraHelper(C2);
+	  scene.add(C2Helper);
+
+	  dollyW = Math.tan(toRad(C2.fov) / 2) * Math.abs(bishop2.position.x - C2model.position.z);
+
+	  // moving camera
+	  const C3 = new THREE.PerspectiveCamera(45, aspect, 10, 130);
+	  C3.rotation.y = Math.PI;
+	  const C3model = makeCameraModel();
+	  C3model.add(C3);
+	  C3model.position.z = boardLoc(10);
+	  C3model.position.y = 70;
+	  scene.add(C3model);
+	  const C3Helper = new THREE.CameraHelper(C3);
+	  scene.add(C3Helper);
+
+	  // LIGHTS
+	  const ambient = new THREE.AmbientLight(0x404040);
+	  scene.add(ambient);
+
+	  const directional = new THREE.DirectionalLight(0xffffff);
+	  directional.shadow.camera.left = -boardSize;
+	  directional.shadow.camera.right = boardSize;
+	  directional.shadow.camera.top = boardSize;
+	  directional.shadow.camera.bottom = -boardSize;
+	  directional.castShadow = true;
+	  directional.position.set(-100, 200, 100);
+	  directional.lookAt(scene.position);
+	  scene.add(directional);
+
+          const gui = new dat.GUI()
+	  const fovControl = gui.add(settings, 'fov', 1, 179, 1).onChange(() => {
+	      C1.fov = settings.fov;
+	      C1.updateProjectionMatrix();
+	  });
+	  const dollyControl = gui.add(settings, 'dolly', boardLoc(-6.5)).onChange(() => {
+	      C2model.position.x = -settings.dolly;
+	      C2.fov = toDeg(2 * Math.atan(dollyW / Math.abs(-settings.dolly - bishop2.position.x)));
+	      C2.far = Math.abs(-settings.dolly - bishop2.position.x) + 100; // magic number
+	      C2.near = Math.abs(-settings.dolly - bishop2.position.x) / 10
+	      C2.updateProjectionMatrix();
+	      C2Helper.update();
+	  });
+
+	  initScroll(webGLRenderer.domElement, fovControl, dollyControl);
+	  // for debug purposes
+	  //const ctrl = new THREE.TrackballControls(C0, webGLRenderer.domElement);
+          render();
+
+          function render() {
+	      bishop1.position.x = boardLoc(14) * Math.sin(t);
+	      C3model.up =
+		  new THREE.Vector3(0, 1, 0)
+		  .setLength(Math.sin(t) ** 2)
+		  .addScaledVector(new THREE.Vector3(0, 0, 0.1), Math.cos(t) ** 2);
+	      t += bishopSpeed;
+	      t %= 2 * Math.PI;
+	      C3model.lookAt(bishop1.position.clone().setY(20));
+	      // for debug purposes
+	      // ctrl.update();
+	      renderViewports(webGLRenderer, scene, window.innerWidth, window.innerHeight, C1, C2, C3, C2Helper, C3Helper);
+	      // debug render
+	      //webGLRenderer.render(scene, C0);
+	      requestAnimationFrame(render);
+          }
+      });
+    </script>
