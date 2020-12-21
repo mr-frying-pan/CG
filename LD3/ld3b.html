@@ -18,7 +18,7 @@
 
       let bishopGeom;
       let bishopHeight;
-      const bishopSpeed = 0.01;
+      const bishopSpeed = 0.02;
 
       let cameraMesh;
       let t = 0;
@@ -39,7 +39,8 @@
 
       const settings = {
 	  fov: 45,
-	  dolly: boardLoc(-3),
+	  dolly: 0,
+	  turn: true
       };
 
       function renderViewport(renderer, scene, l, r, w, h, cam) {
@@ -241,6 +242,7 @@
 	      C2.updateProjectionMatrix();
 	      C2Helper.update();
 	  });
+	  gui.add(settings, 'turn').onChange(() => C3model.up = new THREE.Vector3(0, 1, 0));
 
 	  dollyControl.setValue(0);
 
@@ -251,10 +253,13 @@
 
           function render() {
 	      bishop1.position.x = boardLoc(14) * Math.sin(t);
-	      C3model.up =
-		  new THREE.Vector3(0, 1, 0)
-		  .setLength(Math.sin(t) ** 2)
-		  .addScaledVector(new THREE.Vector3(0, 0, 0.1), Math.cos(t) ** 2);
+	      if(settings.turn) {
+		  C3model.up =
+		      new THREE.Vector3(0, 1, 0)
+		      .setLength(Math.sin(t) ** 2)
+		      .addScaledVector(new THREE.Vector3(0, 0, 0.1), Math.cos(t) ** 2);
+	      }
+
 	      t += bishopSpeed;
 	      t %= 2 * Math.PI;
 	      C3model.lookAt(bishop1.position.clone().setY(20));
