@@ -50,7 +50,9 @@
 	      float v = fract(vUv.y * 8.0);
 	      
 	      float f = clamp(abs(u - 0.5), 0.0, 0.29) + clamp(abs(v - 0.5), 0.0, 0.29) - 0.3;
-	      float edgeFactor = step(0.0, f);
+	      float grad = length(vec2(dFdx(f),dFdy(f))); 
+	      float d = 1.0 * grad;
+	      float edgeFactor = smoothstep(-d, d, f);
 
 	      color = intensity * mix(blue, yellow, edgeFactor);
 	  }
